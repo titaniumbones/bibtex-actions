@@ -38,6 +38,7 @@
 ;;; Code:
 
 (require 'bibtex-completion)
+(require 'embark)
 
 (declare-function org-element-context "org-element")
 (declare-function org-element-property "org-element")
@@ -512,6 +513,12 @@ commands (i.e. bibtex-actions-*) currently do not work well with
 ;;; Command wrappers for bibtex-completion functions
 
 ;;;###autoload
+(defun bibtex-actions (keys)
+  "Run actions on KEYS."
+  (interactive (list (bibtex-actions-read :rebuild-cache current-prefix-arg)))
+  (funcall bibtex-actions-default-action keys))
+
+;;;###autoload
 (defun bibtex-actions-open (keys)
  "Open PDF, or URL or DOI link.
 Opens the PDF(s) associated with the KEYS.  If multiple PDFs are
@@ -551,7 +558,7 @@ With prefix, rebuild the cache before offering candidates."
 (defun bibtex-actions-insert-reference (keys)
   "Insert formatted reference(s) associated with the KEYS.
 With prefix, rebuild the cache before offering candidates."
-  (interactive (list (bibtex-actions-read :rebuild-cache current-prefix-arg)))
+;  (interactive (list (bibtex-actions-read :rebuild-cache current-prefix-arg)))
   (bibtex-completion-insert-reference keys))
 
 ;;;###autoload
