@@ -161,12 +161,10 @@ means no action."
   :type '(choice (const :tag "Prompt" 'prompt)
                  (const :tag "Ignore" nil)))
 
-(defcustom bibtex-actions-embark-dwim t
-  "Whether to run the default action on citation keys at point.
-If non-nil, call the default embark action through `embark-dwim'.
-If nil, prompt the user for an action through `embark-act'."
+(defcustom bibtex-actions-at-point-function 'embark-dwim
+  "The function to run for 'bibtex-actions-at-point'."
   :group 'bibtex-actions
-  :type 'boolean)
+  :type 'function)
 
 ;;; History, including future history list.
 
@@ -201,28 +199,7 @@ If nil, prompt the user for an action through `embark-act'."
 ;;; Org-cite citation function
 
 (defun bibtex-actions--format-citation-org (keys)
-  "Format org-cite citations for the entries in KEYS.
-
-The full citation syntax is:
-
-  [cite/style:common prefix ;prefix @key suffix; ... ; common suffix]
-
-Everything is optional, except the brackets, 'cite' and the colon.
-Also the citation must contain at least a key.
-So its minimal form is:
-
-  [cite:@key]
-
-Note that the prefix here is for the citation as a whole; if you
-need to add one specific to an individual citation item, you
-would need to add that after inserting.
-
-  [cite:see ;item prefix @key]
-
-The same is true for suffixes like page numbers, which are
-specific to the item, rather than the citation as a whole.
-
-  [cite: see ;@key pp23-24]"
+  "Format org-cite citations for the entries in KEYS."
   (let* ((prefix  (if bibtex-completion-cite-prompt-for-optional-arguments (read-from-minibuffer "Prefix: ") ""))
          (styles bibtex-actions-org-cite-styles)
          (style  (if bibtex-completion-cite-prompt-for-optional-arguments
@@ -607,21 +584,16 @@ If no citation key is found, target entries can be chosen
 interactively when `bibtex-actions-at-point-fallback' is non-nil.
 With prefix ARG, rebuild the cache before offering candidates."
   (interactive "P")
-  (if (fboundp 'embark-dwim)
+  (if (fboundp bibtex-actions-at-point-function)
       (condition-case err
-          (if bibtex-actions-embark-dwim
-              (embark-dwim)
-            (embark-act))
+          (funcall bibtex-actions-at-point-function)
         (user-error
          (when (and (string-equal (error-message-string err) "No target found")
-                    bibtex-actions-at-point-fallback)
-           (bibtex-actions-run-default-action
-            (bibtex-actions-read :rebuild-cache arg)))))
-    (if-let ((keys (bibtex-actions-citation-key-at-point)))
-        (funcall bibtex-actions-default-action keys)
-      (when bibtex-actions-at-point-fallback
-        (bibtex-actions-run-default-action
-         (bibtex-actions-read :rebuild-cache arg))))))
+                    bibtex-actions-at-point-fallback) ;; fallback when no target is found
+           (let ((bibtex-actions-at-point-function)) ;; disable bibtex-actions-at-point-function and retry
+             (bibtex-actions-at-point arg)))))
+    (bibtex-actions-run-default-action ;; prompt directly when bibtex-actions-at-point-function is nil or not bound
+     (bibtex-actions-read :rebuild-cache arg))))
 
 (with-eval-after-load "embark"
   (add-to-list 'embark-target-finders 'bibtex-actions-citation-key-at-point)
